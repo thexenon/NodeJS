@@ -6,10 +6,12 @@ const handleCastErrorDB = err => {
 };
 
 const handleDuplicateFieldsDB = err => {
-  const value = err.errmsg.match(/(["'])(\\?.)*?\1/)[0];
-  console.log(value);
+  // const value = err.errmsg.match(/(["'])(\\?.)*?\1/)[0];
+  console.log(err.keyValue.name);
 
-  const message = `Duplicate field value: ${value}. Please use another value!`;
+  const message = `Duplicate field value: ${
+    err.keyValue.name
+  }. Please use another value!`;
   return new AppError(message, 400);
 };
 const handleValidationErrorDB = err => {
@@ -65,6 +67,6 @@ module.exports = (err, req, res, next) => {
     if (error.name === 'ValidationError')
       error = handleValidationErrorDB(error);
 
-    sendErrorProd(error, res);
+    sendErrorProd(err, res);
   }
 };
