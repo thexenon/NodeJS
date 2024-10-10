@@ -1,99 +1,88 @@
-const fs = require('fs');
+const User = require('./../models/userModel');
+const APIFeatures = require('./../utils/apiFeatures');
+const CatchAsync = require('./../utils/catchAsync');
+const AppError = require('./../utils/appError');
 
-const users = JSON.parse(
-  fs.readFileSync(
-    `${__dirname}/../dev-data/data/users.json`
-  )
-);
+exports.getAllUsers = CatchAsync(async (req, res, next) => {
+  // Execute Query
+  const features = new APIFeatures(User.find(), req.query)
+    .filter()
+    .sort()
+    .limitFields()
+    .pages();
+  const users = await features.query;
 
-exports.getAllUsers = (req, res) => {
-  console.log(req.requestTime);
-
+  // Send Response
   res.status(200).json({
     status: 'success',
-    requestedAt: req.requestTime,
     results: users.length,
     data: {
       users
     }
   });
-};
+});
 
-exports.getSingleUser = (req, res) => {
-  console.log(req.params);
-  const id = req.params.id;
-  const user = users.find(el => el.id === id);
-
-  // //   if (id > users.length) {
+exports.getSingleUser = CatchAsync(async (req, res, next) => {
+  const user = await User.findById(req.params.id);
   if (!user) {
-    return res.status(404).json({
-      status: 'Fail',
-      message: 'Invalid ID'
-    });
+    return next(
+      new AppError(`No User found with the ID: ${req.params.id}`, 404)
+    );
   }
 
   res.status(200).json({
     status: 'success',
-    // results: users.length,
     data: {
       user
     }
   });
-};
+});
 
-exports.addNewUser = (req, res) => {
-  //   console.log(req.body);
-  const newID = users[users.length - 1].id + 1;
-  const newUser = Object.assign({ id: newID }, req.body);
-  users.push(newUser);
-  fs.writeFile(
-    `${__dirname}/dev-data/data/users-simple.json`,
-    JSON.stringify(users),
-    err => {
-      res.status(201).json({
-        status: 'sucess',
-        data: {
-          user: newUser
-        }
-      });
+exports.addNewUser = CatchAsync(async (req, res, next) => {
+  // const newUsers = new User({})
+  // newUsers.save()
+
+  const newUser = await User.create(req.body);
+
+  res.status(201).json({
+    status: 'sucess',
+    data: {
+      user: newUser
     }
-  );
-};
+  });
+});
 
-exports.updateUser = (req, res) => {
-  const id = req.params.id;
-  const user = users.find(el => el.id === id);
+exports.updateUser = CatchAsync(async (req, res, next) => {
+  const user = await User.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+    runValidator: true
+  });
 
-  //   if (id > users.length) {
   if (!user) {
-    return res.status(404).json({
-      status: 'Fail',
-      message: 'Invalid ID'
-    });
+    return next(
+      new AppError(`No User found with the ID: ${req.params.id}`, 404)
+    );
   }
 
   res.status(200).json({
     status: 'success',
     data: {
-      user: '<Update is here...>'
+      user
     }
   });
-};
+});
 
-exports.deleteUser = (req, res) => {
-  const id = req.params.id;
-  const user = users.find(el => el.id === id);
+exports.deleteUser = CatchAsync(async (req, res, next) => {
+  const user = await User.findByIdAndDelete(req.params.id);
 
-  //   if (id > users.length) {
   if (!user) {
-    return res.status(404).json({
-      status: 'Fail',
-      message: 'Invalid ID'
-    });
+    return next(
+      new AppError(`No User found with the ID: ${req.params.id}`, 404)
+    );
   }
 
   res.status(204).json({
     status: 'success',
     data: null
   });
-};
+});
