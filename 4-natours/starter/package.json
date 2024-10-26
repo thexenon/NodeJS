@@ -4,6 +4,7 @@
   "description": "Express and MongoDB",
   "main": "app.js",
   "scripts": {
+    "start": "nodemon server.js --trace-deprecation",
     "start:dev": "nodemon server.js",
     "start:prod": " nodemon server.js NODE_ENV=production",
     "debug": "ndb server.js"

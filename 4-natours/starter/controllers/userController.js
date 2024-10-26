@@ -1,88 +1,138 @@
 const User = require('./../models/userModel');
-const APIFeatures = require('./../utils/apiFeatures');
-const CatchAsync = require('./../utils/catchAsync');
+const catchAsync = require('./../utils/catchAsync');
 const AppError = require('./../utils/appError');
+const factory = require('./handlerFactory');
+// const APIFeatures = require('./../utils/apiFeatures');
 
-exports.getAllUsers = CatchAsync(async (req, res, next) => {
-  // Execute Query
-  const features = new APIFeatures(User.find(), req.query)
-    .filter()
-    .sort()
-    .limitFields()
-    .pages();
-  const users = await features.query;
-
-  // Send Response
-  res.status(200).json({
-    status: 'success',
-    results: users.length,
-    data: {
-      users
-    }
+const filterObj = (obj, ...allowedFields) => {
+  const newObj = {};
+  Object.keys(obj).forEach(el => {
+    if (allowedFields.includes(el)) newObj[el] = obj[el];
   });
-});
+  return newObj;
+};
 
-exports.getSingleUser = CatchAsync(async (req, res, next) => {
-  const user = await User.findById(req.params.id);
-  if (!user) {
+// Protected User Controls
+exports.getMe = (req, res, next) => {
+  req.params.id = req.user.id;
+  next();
+};
+
+exports.updateMe = catchAsync(async (req, res, next) => {
+  // 1) Create error if user POSTs password data
+  if (req.body.password || req.body.passwordConfirm) {
     return next(
-      new AppError(`No User found with the ID: ${req.params.id}`, 404)
+      new AppError(
+        'This route is not for password updates. Please use /updateMyPassword.',
+        400
+      )
     );
   }
 
-  res.status(200).json({
-    status: 'success',
-    data: {
-      user
-    }
-  });
-});
+  // 2) Filtered out unwanted fields names that are not allowed to be updated
+  const filteredBody = filterObj(req.body, 'name', 'email');
 
-exports.addNewUser = CatchAsync(async (req, res, next) => {
-  // const newUsers = new User({})
-  // newUsers.save()
-
-  const newUser = await User.create(req.body);
-
-  res.status(201).json({
-    status: 'sucess',
-    data: {
-      user: newUser
-    }
-  });
-});
-
-exports.updateUser = CatchAsync(async (req, res, next) => {
-  const user = await User.findByIdAndUpdate(req.params.id, req.body, {
+  // 3) Update user document
+  const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
     new: true,
-    runValidator: true
+    runValidators: true
   });
-
-  if (!user) {
-    return next(
-      new AppError(`No User found with the ID: ${req.params.id}`, 404)
-    );
-  }
 
   res.status(200).json({
     status: 'success',
     data: {
-      user
+      user: updatedUser
     }
   });
 });
 
-exports.deleteUser = CatchAsync(async (req, res, next) => {
-  const user = await User.findByIdAndDelete(req.params.id);
-
-  if (!user) {
-    return next(
-      new AppError(`No User found with the ID: ${req.params.id}`, 404)
-    );
-  }
+exports.deleteMe = catchAsync(async (req, res, next) => {
+  await User.findByIdAndUpdate(req.user.id, { active: false });
 
   res.status(204).json({
     status: 'success',
     data: null
   });
 });
+
+// Global User Controls
+exports.getAllUsers = factory.getAll(User);
+exports.getSingleUser = factory.getOne(User);
+exports.updateUser = factory.updateOne(User);
+exports.deleteUser = factory.deleteOne(User);
+
+exports.addNewUser = catchAsync(async (req, res, next) => {
+  res.status(201).json({
+    status: 'error',
+    message: 'This route is not defined. Use /signup instead'
+  });
+});
+
+// exports.getAllUsers = catchAsync(async (req, res, next) => {
+//   // Execute Query
+//   const features = new APIFeatures(User.find(), req.query)
+//     .filter()
+//     .sort()
+//     .limitFields()
+//     .pages();
+//   const users = await features.query;
+
+//   // Send Response
+//   res.status(200).json({
+//     status: 'success',
+//     results: users.length,
+//     data: {
+//       users
+//     }
+//   });
+// });
+
+// exports.getSingleUser = catchAsync(async (req, res, next) => {
+//   const user = await User.findById(req.params.id);
+//   if (!user) {
+//     return next(
+//       new AppError(`No User found with the ID: ${req.params.id}`, 404)
+//     );
+//   }
+
+//   res.status(200).json({
+//     status: 'success',
+//     data: {
+//       user
+//     }
+//   });
+// });
+// exports.updateUser = catchAsync(async (req, res, next) => {
+//   const user = await User.findByIdAndUpdate(req.params.id, req.body, {
+//     new: true,
+//     runValidator: true
+//   });
+
+//   if (!user) {
+//     return next(
+//       new AppError(`No User found with the ID: ${req.params.id}`, 404)
+//     );
+//   }
+
+//   res.status(200).json({
+//     status: 'success',
+//     data: {
+//       user
+//     }
+//   });
+// });
+
+// exports.deleteUser = catchAsync(async (req, res, next) => {
+//   const user = await User.findByIdAndDelete(req.params.id);
+
+//   if (!user) {
+//     return next(
+//       new AppError(`No User found with the ID: ${req.params.id}`, 404)
+//     );
+//   }
+
+//   res.status(204).json({
+//     status: 'success',
+//     data: null
+//   });
+// });

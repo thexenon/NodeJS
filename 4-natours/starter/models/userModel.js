@@ -70,6 +70,12 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+// Document middleware before find()
+userSchema.pre(/^find/, function(next) {
+  this.find({ active: { $ne: false } });
+  next();
+});
+
 // Document middleware before save(), create() but not insertMany()
 userSchema.pre('save', function(next) {
   this.slug = slugify(this.name, { lower: true });
@@ -93,6 +99,7 @@ userSchema.pre('save', async function(next) {
   next();
 });
 
+// Document middleware for methods
 userSchema.methods.correctPassword = async function(
   candidatePassword,
   userPassword
